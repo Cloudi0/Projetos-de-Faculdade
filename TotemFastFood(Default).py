@@ -1,211 +1,291 @@
-import sys
+import tkinter as tk
+from tkinter import messagebox
 import random
+import sys
+import os
 
-print("=" * 40)
-print("Bem-Vindo ao FastFood".upper())
-print("=" * 40)
-
-def confirmacao():
-    while True:
-        continuar = input("Deseja continuar? [S/N]: ").lower()
-
-        if continuar == "s":
-            return True
-        elif continuar == "n":
-            print("Ate Mais :)")
-            sys.exit()
-        else:
-            print("Resposta inválida! Digite apenas S ou N")
-
-resultado = confirmacao()
-
-while True:
-    usuario = input("Digite seu nome: ")
-    if len(usuario) <= 20:
-        print("Nome válido")
-        break
-    else:
-        print("Nome muito grande (máx 10 caracteres)")
-
-print("\n")
-print("=" * 40)
-print(f"olá {usuario}, faça seu pedido".upper())
-print("=" * 40)
-print("\n")
-
-lanches = [
-    (1, "X-Burger", 15),
-    (2, "X-Salada", 18),
-    (3, "X-Bacon", 20),
-    (4, "X-Egg", 19),
-    (5, "X-Tudo", 25),
-    (6, "X-Frango", 17),
-    (7, "Veggie Burger", 22)
+# ================== DADOS ==================
+cardapio = [
+    ("Burgers", [
+        (1, "X-Burger", 15),
+        (2, "X-Salada", 18),
+        (3, "X-Bacon", 20),
+        (4, "X-Egg", 19),
+        (5, "X-Tudo", 25),
+        (6, "X-Frango", 17),
+        (7, "Veggie Burger", 22),
+    ]),
+    ("Acompanhamentos", [
+        (8, "Fritas P", 8),
+        (9, "Fritas M", 10),
+        (10, "Fritas G", 12),
+        (11, "Nuggets x7", 11),
+        (12, "Onion Rings x10", 13),
+    ]),
+    ("Sobremesas", [
+        (13, "Sorvete", 10),
+        (14, "Milkshake", 14),
+        (15, "Sundae", 13),
+    ])
 ]
 
-print("-" * 40)
-print("LANCHES")
-print("-" * 40)
-for codigo, nome, preco in lanches:
-    print(f"{codigo} - {nome} — R$ {preco},00")
-
-acompanhamentos = [
-    (8, "Fritas P", 8),
-    (9, "Fritas M", 10),
-    (10, "Fritas G", 12),
-    (11, "Nuggets x7", 11),
-    (12, "Onion Rings x10", 13)
-]
-
-print("-" * 40)
-print("ACOMPANHAMENTOS")
-print("-" * 40)
-for codigo, nome, preco in acompanhamentos:
-    print(f"{codigo} - {nome} — R$ {preco},00")
-
-sobremesas = [
-    (13, "Sorvete", 10),
-    (14, "Milkshake", 14),
-    (15, "Sundae", 13),
-]
-
-print("-" * 40)
-print("SOBREMESAS")
-print("-" * 40)
-for codigo, nome, preco in sobremesas:
-    print(f"{codigo} - {nome} — R$ {preco},00")
-
-cardapio = lanches + acompanhamentos + sobremesas
-
-total = 0
 pedidos = []
+total = 0
+cliente_nome = ""
 
-while True:
-    escolha = input("\nQual a sua escolha?(ou digite 0 para sair)...: ")
+# ================== SALVAR ==================
+def salvar_nota(resumo):
+    pasta = "Banco_de_Dados"
+    if not os.path.exists(pasta):
+        os.makedirs(pasta)
+
+    caminho = os.path.join(pasta, "Notas_Fiscais.txt")
+
+    with open(caminho, "a", encoding="utf-8") as f:
+        f.write(resumo + "\n\n")
+
+# ================== FUNÇÕES ==================
+def adicionar_item():
+    global total
+    escolha = entry_codigo.get()
 
     if not escolha.isdigit():
-        print("Digite apenas números!")
-        continue
+        messagebox.showerror("Erro", "Digite apenas números!")
+        return
 
     escolha = int(escolha)
 
-    if escolha == 0:
-        break
+    for categoria, itens in cardapio:
+        for codigo, nome, preco in itens:
+            if escolha == codigo:
+                pedidos.append((nome, preco))
+                total += preco
+                atualizar_lista()
+                entry_codigo.delete(0, tk.END)
+                return
 
-    encontrado = False
+    messagebox.showerror("Erro", "Código inválido!")
 
-    for codigo, nome, preco in cardapio:
-        if escolha == codigo:
-            pedidos.append((nome, preco))
-            total += preco
 
-            print(f"\nVocê escolheu: {nome} — R$ {preco},00")
-            print(f"Total atual: R$ {total},00")
+def remover_item():
+    global total
+    try:
+        index = lista.curselection()[0]
+        nome, preco = pedidos.pop(index)
+        total -= preco
+        atualizar_lista()
+    except:
+        messagebox.showerror("Erro", "Selecione um item da lista!")
 
-            encontrado = True
 
-            while True:
-                opcao = input("\nDigite [1] Continuar pedindo, [2] Pagar ou [3] Remover item?(ou Digite 0 para sair) ")
+def atualizar_lista():
+    lista.delete(0, tk.END)
+    for nome, preco in pedidos:
+        lista.insert(tk.END, f"{nome} — R$ {preco},00")
+    label_total.config(text=f"TOTAL: R$ {total},00")
 
-                if opcao == "1":
-                    break
 
-                elif opcao == "0":
-                    print("Tenha um Bom Dia :)")
-                    sys.exit()
+def finalizar_pedido():
+    if not pedidos:
+        messagebox.showwarning("Aviso", "Nenhum pedido feito!")
+        return
+    janela_pagamento()
 
-                elif opcao == "2":
-                    print("\n" + "=" * 40)
-                    print("RESUMO DO PEDIDO")
-                    print("=" * 40)
 
-                    for nome_pedido, preco_pedido in pedidos:
-                        print(f"{nome_pedido} — R$ {preco_pedido},00")
+# ================== PAGAMENTO ==================
+def janela_pagamento():
+    janela2 = tk.Toplevel()
+    janela2.title("Pagamento")
+    janela2.geometry("400x350")
+    janela2.configure(bg="#b71c1c")
 
-                    print("-" * 40)
-                    print(f"TOTAL: R$ {total},00")
+    tk.Label(janela2, text="Forma de pagamento",
+             font=("Arial", 16, "bold"),
+             bg="#b71c1c", fg="white").pack(pady=10)
 
-                    # ESCOLHA DE PAGAMENTO
-                    while True:
-                        print("\nFormas de pagamento:")
-                        print("[1] Pix")
-                        print("[2] Cartão de débito")
-                        print("[3] Dinheiro")
-                        print("[4] Voltar para o cardápio")
+    def pagar(forma, parcelas=1):
+        numero = random.randint(1000, 9999)
 
-                        pagamento = input("Escolha a forma de pagamento: ")
+        resumo = "\n" + "=" * 40 + "\n"
+        resumo += "NOTA FISCAL\n"
+        resumo += "=" * 40 + "\n"
+        resumo += f"Cliente: {cliente_nome}\n"
+        resumo += f"Pedido: {numero}\n"
+        resumo += "-" * 40 + "\n"
 
-                        if pagamento == "1":
-                            forma = "Pix"
-                            print("\nPagamento Aprovado".upper())
-                            break
-                        elif pagamento == "2":
-                            forma = "Cartão de débito"
-                            print("\nPagamento Aprovado".upper())
-                            break
-                        elif pagamento == "3":
-                            forma = "Dinheiro"
-                            print("\nEfetue o Pagamento no Balcao ao Lado".upper())
-                            break
-                        elif pagamento == "4":
-                            break  # volta pro menu anterior
-                        else:
-                            print("Opção inválida!")
+        for nome, preco in pedidos:
+            resumo += f"{nome} — R$ {preco},00\n"
 
-                    # SE ESCOLHER VOLTAR, RETORNA AO CARDÁPIO
-                    if pagamento == "4":
-                        continue
+        resumo += "-" * 40 + "\n"
+        resumo += f"TOTAL: R$ {total},00\n"
+        resumo += f"Pagamento: {forma}\n"
 
-                    numero_chamada = random.randint(10, 9999)
+        if parcelas > 1:
+            resumo += f"Parcelado em {parcelas}x\n"
 
-                    # NOTA FISCAL
-                    print("\n" + "=" * 40)
-                    print("NOTA FISCAL")
-                    print("=" * 40)
-                    print(f"Cliente: {usuario}")
-                    print(f"Número do pedido: {numero_chamada}")
-                    print("-" * 40)
+        resumo += "=" * 40 + "\n"
 
-                    for nome_pedido, preco_pedido in pedidos:
-                        print(f"{nome_pedido} — R$ {preco_pedido},00")
+        salvar_nota(resumo)
+        messagebox.showinfo("Nota Fiscal", resumo)
+        sys.exit()
 
-                    print("-" * 40)
-                    print(f"TOTAL: R$ {total},00")
-                    print(f"Pagamento: {forma}")
-                    print("=" * 40)
-                    print("Obrigado pela compra! 🍔")
+    def credito():
+        top = tk.Toplevel()
+        top.title("Parcelamento")
 
-                    sys.exit()
+        tk.Label(top, text="Escolha parcelas",
+                 font=("Arial", 13, "bold")).pack(pady=10)
 
-                elif opcao == "3":
-                    if len(pedidos) == 0:
-                        print("Nenhum item para remover!")
-                        continue
+        for i in range(1, 4):
+            tk.Button(top, text=f"{i}x",
+                      font=("Arial", 12, "bold"),
+                      width=10,
+                      bg="#2e7d32", fg="white",
+                      command=lambda i=i: pagar("Crédito", i)).pack(pady=5)
 
-                    print("\nSeus pedidos:")
-                    for i, (nome_pedido, preco_pedido) in enumerate(pedidos):
-                        print(f"{i} - {nome_pedido} — R$ {preco_pedido},00")
+    tk.Button(janela2, text="Crédito", bg="#2e7d32", fg="white",
+              font=("Arial", 12, "bold"), width=20,
+              command=credito).pack(pady=5)
 
-                    remover = input("Digite o número do item que deseja remover: ")
+    tk.Button(janela2, text="Débito", bg="#2e7d32", fg="white",
+              font=("Arial", 12, "bold"), width=20,
+              command=lambda: pagar("Débito")).pack(pady=5)
 
-                    if not remover.isdigit():
-                        print("Digite apenas números!")
-                        continue
+    tk.Button(janela2, text="Pix", bg="#2e7d32", fg="white",
+              font=("Arial", 12, "bold"), width=20,
+              command=lambda: pagar("Pix")).pack(pady=5)
 
-                    remover = int(remover)
+    tk.Button(janela2, text="Dinheiro", bg="#2e7d32", fg="white",
+              font=("Arial", 12, "bold"), width=20,
+              command=lambda: pagar("Dinheiro")).pack(pady=5)
 
-                    if 0 <= remover < len(pedidos):
-                        nome_removido, preco_removido = pedidos.pop(remover)
-                        total -= preco_removido
-                        print(f"{nome_removido} removido com sucesso!")
-                        print(f"Total atual: R$ {total},00")
-                    else:
-                        print("Item inválido!")
+    tk.Button(janela2, text="Voltar", bg="#c62828", fg="white",
+              font=("Arial", 12, "bold"),
+              width=20, command=janela2.destroy).pack(pady=10)
 
-                else:
-                    print("Opção inválida!")
 
-            break
+# ================== TELA INICIAL ==================
+def iniciar_sistema():
+    global cliente_nome
+    nome = entry_nome_inicio.get().strip()
 
-    if not encontrado:
-        print("Código inválido!")
+    if nome == "":
+        messagebox.showerror("Erro", "Digite seu nome!")
+        return
+
+    cliente_nome = nome
+    tela_inicio.destroy()
+    abrir_sistema()
+
+
+tela_inicio = tk.Tk()
+tela_inicio.title("Bem-vindo")
+tela_inicio.geometry("400x200")
+tela_inicio.configure(bg="#b71c1c")
+
+tk.Label(tela_inicio, text="Digite seu nome",
+         font=("Arial", 16, "bold"),
+         bg="#b71c1c", fg="white").pack(pady=20)
+
+entry_nome_inicio = tk.Entry(tela_inicio, font=("Arial", 12))
+entry_nome_inicio.pack(pady=10)
+
+tk.Button(tela_inicio, text="Entrar",
+          bg="#2e7d32", fg="white",
+          font=("Arial", 12, "bold"),
+          width=15,
+          command=iniciar_sistema).pack(pady=10)
+
+
+# ================== SISTEMA PRINCIPAL ==================
+def abrir_sistema():
+    global entry_codigo, lista, label_total
+
+    janela = tk.Tk()
+    janela.title("FastFood")
+    janela.state("zoomed")
+    janela.configure(bg="#b71c1c")
+
+    tk.Label(janela, text=f"Cliente: {cliente_nome}",
+             font=("Arial", 14, "bold"),
+             bg="#b71c1c", fg="white").pack(pady=5)
+
+    frame = tk.Frame(janela, bg="#b71c1c")
+    frame.pack(fill="both", expand=True)
+
+    # CARDÁPIO (COM BORDA)
+    frame_cardapio = tk.Frame(
+        frame,
+        bg="#ff9800",
+        bd=3,
+        relief="solid"
+    )
+    frame_cardapio.pack(side="left", fill="both", expand=True, padx=10, pady=10)
+
+    tk.Label(frame_cardapio, text="CARDÁPIO",
+             font=("Arial", 16, "bold"),
+             bg="#ff9800", fg="white").pack()
+
+    for categoria, itens in cardapio:
+        tk.Label(frame_cardapio, text=f"\n{categoria}",
+                 font=("Arial", 13, "bold"),
+                 bg="#ff9800").pack(anchor="w")
+
+        for codigo, nome, preco in itens:
+            tk.Label(frame_cardapio,
+                     text=f"{codigo} - {nome} — R$ {preco},00",
+                     font=("Arial", 12),
+                     bg="#ff9800").pack(anchor="w")
+
+    # PEDIDOS (COM BORDA)
+    frame_pedidos = tk.Frame(
+        frame,
+        bg="white",
+        bd=3,
+        relief="solid"
+    )
+    frame_pedidos.pack(side="right", fill="both", expand=True, padx=10)
+
+    tk.Label(frame_pedidos, text="SEUS PEDIDOS",
+             font=("Arial", 15, "bold"),
+             bg="white").pack()
+
+    lista = tk.Listbox(frame_pedidos, font=("Arial", 13))
+    lista.pack(fill="both", expand=True)
+
+    tk.Label(frame_pedidos,
+             text="Selecione um item e clique em REMOVER",
+             fg="red", bg="white",
+             font=("Arial", 11)).pack()
+
+    label_total = tk.Label(frame_pedidos,
+                           text="TOTAL: R$ 0,00",
+                           font=("Arial", 13, "bold"),
+                           bg="white")
+    label_total.pack(pady=5)
+
+    entry_codigo = tk.Entry(janela, font=("Arial", 12))
+    entry_codigo.pack(pady=5)
+
+    tk.Button(janela, text="Adicionar",
+              bg="#2e7d32", fg="white",
+              font=("Arial", 12, "bold"),
+              width=20, height=2,
+              command=adicionar_item).pack(pady=4)
+
+    tk.Button(janela, text="Remover",
+              bg="#c62828", fg="white",
+              font=("Arial", 12, "bold"),
+              width=20, height=2,
+              command=remover_item).pack(pady=4)
+
+    tk.Button(janela, text="Finalizar Pedido",
+              bg="#2e7d32", fg="white",
+              font=("Arial", 13, "bold"),
+              width=25, height=2,
+              command=finalizar_pedido).pack(pady=10)
+
+    janela.mainloop()
+
+
+tela_inicio.mainloop()
