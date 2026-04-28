@@ -53,7 +53,6 @@ def adicionar_item(nome, preco):
 
 def remover_item(event=None):
     global total
-
     selecionado = lista.curselection()
 
     if not selecionado:
@@ -112,7 +111,8 @@ def janela_pagamento():
         resumo += f"Pagamento: {forma}\n"
 
         if parcelas > 1:
-            resumo += f"Parcelado em {parcelas}x\n"
+            valor_parcela = total / parcelas
+            resumo += f"Parcelado em {parcelas}x de R$ {valor_parcela:.2f}\n"
 
         resumo += "=" * 40 + "\n"
 
@@ -120,10 +120,29 @@ def janela_pagamento():
         messagebox.showinfo("Nota Fiscal", resumo)
         sys.exit()
 
+    def escolher_parcelas():
+        janela_parcelas = tk.Toplevel(janela2)
+        janela_parcelas.title("Parcelamento")
+        janela_parcelas.geometry("300x250")
+        janela_parcelas.configure(bg="#b71c1c")
+
+        tk.Label(janela_parcelas, text="Escolha as parcelas",
+                 font=("Arial", 14, "bold"),
+                 bg="#b71c1c", fg="white").pack(pady=10)
+
+        for i in [1, 2, 3]:
+            tk.Button(janela_parcelas,
+                      text=f"{i}x",
+                      font=("Arial", 12, "bold"),
+                      width=15,
+                      bg="#2e7d32", fg="white",
+                      command=lambda p=i: pagar("Crédito", p)
+                      ).pack(pady=5)
+
     tk.Button(janela2, text="Cartão de Crédito",
               font=("Arial", 12, "bold"),
               width=25, bg="#2e7d32", fg="white",
-              command=lambda: pagar("Crédito")).pack(pady=5)
+              command=escolher_parcelas).pack(pady=5)
 
     tk.Button(janela2, text="Cartão de Débito",
               font=("Arial", 12, "bold"),
@@ -177,80 +196,103 @@ def abrir_sistema():
 
     janela = tk.Tk()
     janela.title("FastFood")
-    janela.state("zoomed")
+    janela.geometry("1000x700")
+    janela.minsize(800, 600)
     janela.configure(bg="#b71c1c")
+
+    janela.rowconfigure(2, weight=1)
+    janela.columnconfigure(0, weight=1)
 
     tk.Label(janela, text=f"Olá, {cliente_nome}!",
              font=("Arial", 16, "bold"),
-             bg="#b71c1c", fg="white").pack(pady=5)
+             bg="#b71c1c", fg="white").grid(row=0, column=0, pady=5)
 
-    tk.Label(janela, text="👉 Passo 1: Clique nos itens do cardápio para adicionar",
+    tk.Label(janela, text="👉 Passo 1: Clique nos itens do cardápio",
              font=("Arial", 12),
-             bg="#b71c1c", fg="white").pack()
+             bg="#b71c1c", fg="white").grid(row=1, column=0)
 
     frame = tk.Frame(janela, bg="#b71c1c")
-    frame.pack(fill="both", expand=True)
+    frame.grid(row=2, column=0, sticky="nsew", padx=10, pady=10)
 
-    # CARDÁPIO
+    frame.columnconfigure(0, weight=1)
+    frame.columnconfigure(1, weight=1)
+    frame.rowconfigure(0, weight=1)
+
     frame_cardapio = tk.Frame(frame, bg="#ff9800", bd=3, relief="solid")
-    frame_cardapio.pack(side="left", fill="both", expand=True, padx=10, pady=10)
+    frame_cardapio.grid(row=0, column=0, sticky="nsew", padx=5)
 
-    tk.Label(frame_cardapio, text="CARDÁPIO",
+    canvas = tk.Canvas(frame_cardapio, bg="#ff9800")
+    scrollbar = tk.Scrollbar(frame_cardapio, orient="vertical", command=canvas.yview)
+    scroll_frame = tk.Frame(canvas, bg="#ff9800")
+
+    scroll_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+    canvas.create_window((0, 0), window=scroll_frame, anchor="nw")
+    canvas.configure(yscrollcommand=scrollbar.set)
+
+    canvas.pack(side="left", fill="both", expand=True)
+    scrollbar.pack(side="right", fill="y")
+
+    tk.Label(scroll_frame, text="CARDÁPIO",
              font=("Arial", 16, "bold"),
              bg="#ff9800").pack()
 
     for categoria, itens in cardapio:
-        tk.Label(frame_cardapio, text=f"\n{categoria}",
+        tk.Label(scroll_frame, text=f"\n{categoria}",
                  font=("Arial", 13, "bold"),
                  bg="#ff9800").pack(anchor="w")
 
         for nome, preco in itens:
-            tk.Button(frame_cardapio,
+            tk.Button(scroll_frame,
                       text=f"{nome} — R$ {preco},00",
-                      font=("Arial", 12),
+                      font=("Arial", 11),
                       width=25,
                       command=lambda n=nome, p=preco: adicionar_item(n, p)
                       ).pack(anchor="w", pady=2)
 
-    # PEDIDOS
     frame_pedidos = tk.Frame(frame, bg="white", bd=3, relief="solid")
-    frame_pedidos.pack(side="right", fill="both", expand=True, padx=10)
+    frame_pedidos.grid(row=0, column=1, sticky="nsew", padx=5)
+
+    frame_pedidos.rowconfigure(1, weight=1)
+    frame_pedidos.columnconfigure(0, weight=1)
 
     tk.Label(frame_pedidos, text="SEU PEDIDO",
              font=("Arial", 15, "bold"),
-             bg="white").pack()
+             bg="white").grid(row=0, column=0)
 
-    lista = tk.Listbox(frame_pedidos, font=("Arial", 13))
-    lista.pack(fill="both", expand=True)
+    lista = tk.Listbox(frame_pedidos, font=("Arial", 12))
+    lista.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
 
-    # 🔥 NOVO: remover com duplo clique
     lista.bind("<Double-Button-1>", remover_item)
 
-    tk.Button(frame_pedidos, text="Remover item selecionado",
+    tk.Button(frame_pedidos, text="Remover item",
               bg="#c62828", fg="white",
-              font=("Arial", 12, "bold"),
-              command=remover_item).pack(pady=5)
+              font=("Arial", 11, "bold"),
+              command=remover_item).grid(row=2, column=0, pady=2)
 
-    # 🔥 NOVO: limpar pedido
     tk.Button(frame_pedidos, text="Limpar Pedido",
               bg="#616161", fg="white",
-              font=("Arial", 12, "bold"),
-              command=limpar_pedido).pack(pady=5)
+              font=("Arial", 11, "bold"),
+              command=limpar_pedido).grid(row=3, column=0, pady=2)
 
     label_total = tk.Label(frame_pedidos,
                            text="TOTAL: R$ 0,00",
-                           font=("Arial", 14, "bold"),
+                           font=("Arial", 13, "bold"),
                            bg="white")
-    label_total.pack(pady=5)
+    label_total.grid(row=4, column=0, pady=5)
 
-    tk.Label(janela, text="👉 Passo 2: Revise seu pedido | Passo 3: Clique em finalizar",
+    frame_bottom = tk.Frame(janela, bg="#b71c1c")
+    frame_bottom.grid(row=3, column=0, sticky="ew")
+
+    tk.Label(frame_bottom,
+             text="👉 Passo 2: Revise | Passo 3: Finalize",
              font=("Arial", 12),
-             bg="#b71c1c", fg="white").pack(pady=5)
+             bg="#b71c1c", fg="white").pack()
 
-    tk.Button(janela, text="Finalizar Pedido",
+    tk.Button(frame_bottom, text="Finalizar Pedido",
               bg="#2e7d32", fg="white",
               font=("Arial", 14, "bold"),
-              width=25, height=2,
+              width=25,
+              height=2,
               command=finalizar_pedido).pack(pady=10)
 
     janela.mainloop()
