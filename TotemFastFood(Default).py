@@ -145,7 +145,7 @@ def janela_pagamento():
               command=escolher_parcelas).pack(pady=5)
 
     tk.Button(janela2, text="Cartão de Débito",
-              font=("Arial", 12, "bold"),
+              font=("Arial", 12, " bold"),
               width=25, bg="#2e7d32", fg="white",
               command=lambda: pagar("Débito")).pack(pady=5)
 
